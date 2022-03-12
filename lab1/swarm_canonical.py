@@ -4,12 +4,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from math import sqrt
 
+np.set_printoptions(precision=16)
 
 BIRDS_NUM = 16
+DIM = 3
 
 PHI = [2.05, 2.05]
-PHI = sum(PHI)  # PHI SHOULD BE > 4
-CHI = 2/(PHI - 2 + sqrt(PHI**2-4*PHI))  # 0.7298
+PHI_SUM = sum(PHI)  # PHI SHOULD BE > 4
+CHI = 2/(PHI_SUM - 2 + sqrt(PHI_SUM**2-4*PHI_SUM))  # 0.7298
 
 """
 1. Wymyslic kryterium stopu
@@ -37,11 +39,23 @@ def update_v(
         group_best_pos: np.ndarray):
 
     personal_trend = np.random.uniform(
-        0, PHI[0])*np.ndarray(personal_best_pos - curr_pos)
+        0, PHI[0])*(personal_best_pos - curr_pos)
     group_trend = np.random.uniform(
-        0, PHI[1])*np.ndarray(group_best_pos - curr_pos)
+        0, PHI[1])*(group_best_pos - curr_pos)
     updated_v = CHI * (curr_v + personal_trend + group_trend)
     return updated_v
+
+
+birds = np.ndarray(shape=(BIRDS_NUM, 3, DIM), dtype=np.float64)
+# AXES:
+# 0 - birds
+# 1 - parameters
+# 2 - coordinates
+
+# PARAMETERS:
+# 0 - current position
+# 1 - personal best position
+# 2 - velocity vector
 
 
 x = np.arange(-2, 2, 0.1)
@@ -56,10 +70,6 @@ z = np.apply_along_axis(rosen, 1, xy)
 # warunek stopu jako odchylenie standardowe (pulsacyjne PSO), jeśli ptaszki są
 # blisko siebie to rozrzucamy je ponownie w przestrzeni
 
-df = pd.DataFrame(xy, columns=['x', 'y'])
-df['z'] = z
-
-# print(df.head())
 
 bx = np.random.uniform(low=-2, high=2, size=BIRDS_NUM)
 by = np.random.uniform(low=-2, high=2, size=BIRDS_NUM)
@@ -68,38 +78,65 @@ b = pd.DataFrame({'x': bx, 'y': by})
 
 bz = np.apply_along_axis(rosen, 1, b)
 
-b['z'] = bz
-b['v'] = np.ndarray(shape=(BIRDS_NUM, 3), dtype=np.float32,
-                    buffer=np.ndarray(buffer=np.zeros((1, 3)), shape=(1, 3)))
-b['personal_best_x'] = b['x'].copy()
-b['personal_best_y'] = b['y'].copy()
+current_pos = np.array([[bx[i], by[i], bz[i]]
+                        for i in range(BIRDS_NUM)], dtype=np.float64)
 
+personal_best = np.copy(current_pos)
+
+velocity = np.zeros(shape=(BIRDS_NUM, 3))
+
+birds[:, 0, :] = current_pos
+birds[:, 1, :] = personal_best
+birds[:, 2, :] = velocity
+
+print(birds.shape)
+
+print(birds[1, 2, :])
+# How to access data in birds:
+# birds[i, 0, :] - current position of i-th bird
+# birds[i, 1, :] - best position of i-th bird
+# birds[i, 2, :] - velocity of i-th bird
+#
+# birds[i, k, 0] - x coordinate
+# birds[i, k, 1] - y coordinate
+# birds[i, k, 2] - rosenbrock function value (always 0 for velocity)
 
 best_evo = {
     'x': [],
     'y': [],
-    'z': [],
-    'v': [],
+    'z': []
 }
 
 
-for k in range(1000):
-    best_bird = b['z'].idxmin()
-    group_best_pos = [b['x'][best_bird], b['y'][best_bird]]
-    for col in ['x', 'y', 'z', 'v']:
-        best_evo[col].append(b[col][best_bird])
+for k in range(10):
+    best = np.argmax(birds[:, 0, 2])
+    group_best_pos = birds[best, 0, :]
+    for i, col in enumerate(['x', 'y', 'z']):
+        best_evo[col].append(birds[best, 0, i])
 
     for i in range(BIRDS_NUM):
-        v = update_v()
+        birds[i, 2, :2] = update_v(
+            curr_pos=birds[i, 0, :2],
+            personal_best_pos=birds[i, 1, :2],
+            group_best_pos=group_best_pos[:2],
+            curr_v=birds[i, 2, :2]
+        )
+
+        # update position x and y
+        birds[i, 0, :2] = birds[i, 0, :2] + birds[i, 2, :2]
+
+        # calculate new value of rosenbrock function (z)
+        birds[i, 0, 2] = rosen(birds[i, 0, :2])
 
 
 evo = pd.DataFrame(best_evo)
 print(evo)
 
-
 X, Y = np.meshgrid(x, y)
 Z = rosen((X, Y))
 plt.contour(X, Y, Z, levels=[x**2.5 for x in range(2, 25)], cmap='plasma')
-plt.scatter(evo['bx'], evo['by'], marker='o',
+
+
+plt.scatter(evo['x'], evo['y'], marker='o',
             color='black', alpha=0.2, linewidths=0.1)
 plt.show()
