@@ -43,6 +43,8 @@ def update_v(
     group_trend = np.random.uniform(
         0, PHI[1])*(group_best_pos - curr_pos)
     updated_v = CHI * (curr_v + personal_trend + group_trend)
+
+    # print(f"curr_v: {curr_v} : new_v: {updated_v}")
     return updated_v
 
 
@@ -102,17 +104,17 @@ print(birds[1, 2, :])
 # birds[i, k, 2] - rosenbrock function value (always 0 for velocity)
 
 best_evo = {
+    'k': [],  # iteration
     'x': [],
     'y': [],
     'z': []
 }
 
+# initial best bird
+best = np.argmin(birds[:, 0, 2])
+group_best_pos = birds[best, 0, :]
 
-for k in range(10):
-    best = np.argmax(birds[:, 0, 2])
-    group_best_pos = birds[best, 0, :]
-    for i, col in enumerate(['x', 'y', 'z']):
-        best_evo[col].append(birds[best, 0, i])
+for k in range(1000000):
 
     for i in range(BIRDS_NUM):
         birds[i, 2, :2] = update_v(
@@ -127,6 +129,19 @@ for k in range(10):
 
         # calculate new value of rosenbrock function (z)
         birds[i, 0, 2] = rosen(birds[i, 0, :2])
+
+        # update personal best
+        if birds[i, 0, 2] < birds[i, 1, 2]:
+            birds[i, 1, 2] = birds[i, 0, 2]
+
+    best = np.argmin(birds[:, 1, 2])
+    if birds[best, 0, 2] < group_best_pos[2]:
+        group_best_pos = birds[best, 0, :]
+        for i, col in enumerate(['x', 'y', 'z']):
+            best_evo[col].append(birds[best, 0, i])
+        best_evo['k'].append(k)
+
+    #print(best, group_best_pos)
 
 
 evo = pd.DataFrame(best_evo)
