@@ -6,12 +6,17 @@ import matplotlib.pyplot as plt
 
 BIRDS_NUM = 16
 
+"""
+1. Wymyslic kryterium stopu
+2) Przerobić istniejący skrypt tak aby zamiast wariantu “bare bones” 
+realizował obliczenia w oparciu o wariant kanoniczny (patrz wykład).
+3) Rozbudować kod funkcji celu oraz kod silnika optymalizacyjnego tak aby 
+możliwe było uzyskiwanie wyników dla funkcji n-wymiarowych.
+"""
+
 
 def rosen(x):
     return 100 * (x[1] - x[0] * x[0])**2 + (1 - x[0])**2
-
-
-def f(x, y): return 100 * (y - x**2)**2 + (1 - x)**2
 
 
 x = np.arange(-2, 2, 0.1)
@@ -39,19 +44,21 @@ b = pd.DataFrame({'bx': bx, 'by': by})
 bz = np.apply_along_axis(rosen, 1, b)
 
 b['bz'] = bz
+#b['v'] = np.zeros((BIRDS_NUM, 1))
+
 
 best_evo = {
     'bx': [],
     'by': [],
-    'bz': []
+    'bz': [],
 }
 
 
 for k in range(1000):
     best_bird = b['bz'].idxmin()
-    best_evo['bx'].append(b['bx'][best_bird])
-    best_evo['by'].append(b['by'][best_bird])
-    best_evo['bz'].append(b['bz'][best_bird])
+    for col in ['bx', 'by', 'bz']:
+        best_evo[col].append(b[col][best_bird])
+
     for i in range(BIRDS_NUM):
         sigma_x = abs(b['bx'][i] - b['bx'][best_bird])
         sigma_y = abs(b['by'][i] - b['by'][best_bird])
@@ -77,8 +84,8 @@ print(evo)
 
 
 X, Y = np.meshgrid(x, y)
-Z = f(X, Y)
-plt.contour(X, Y, Z, 200)
+Z = rosen((X, Y))
+plt.contour(X, Y, Z, levels=[x**2.5 for x in range(2, 25)], cmap='plasma')
 plt.scatter(evo['bx'], evo['by'], marker='o',
-            color='red', alpha=0.2, linewidths=0.1)
+            color='black', alpha=0.2, linewidths=0.1)
 plt.show()
